@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ─────────────────────────────────────────────
 // DATOS MAESTROS
 // ─────────────────────────────────────────────
 const PRODUCTS = [
-  "Limpiacristales","Gel WC","Lejía azul baños","Papel Higiénico paq","Gel Ducha","Champú",
-  "Rec. fregona ud","Bolsa blanca","Palo fregona","Escobilla baño rec","Papel Cocina G",
-  "Jabón vajillas","Pastillas lavavajillas","Quitagrasas","Café molido","Cápsulas Nespresso",
-  "Cápsulas DG Classic","Filtro café","Té","Sal","Azúcar","Aceitera","Vinagrera",
+  "Limpiacristales","Gel WC","Lejia azul banos","Papel Higienico paq","Gel Ducha","Champu",
+  "Rec. fregona ud","Bolsa blanca","Palo fregona","Escobilla bano rec","Papel Cocina G",
+  "Jabon vajillas","Pastillas lavavajillas","Quitagrasas","Cafe molido","Capsulas Nespresso",
+  "Capsulas DG Classic","Filtro cafe","Te","Sal","Azucar","Aceitera","Vinagrera",
   "Estropajo azul ud","Bayetas Cocina","Abrillantador lav","Bolsa gris","Friegasuelos",
-  "Detergente Ropa","Suavizante","Lejía Ropa","Bayetas Microfibra ud","Blanqueador perborato",
-  "Estropajos Acero","Plumeros caja","Bolsa asp Bosh ud","Bolsa asp (Moreria)","Bolsa asp (Fomento)",
-  "Guantes T/M","Quitapelusa ud","Vinagre limp","Spray mopa","Jabón lagarto ud","Sal lavavajillas",
-  "Escobilla baño set","Friegas. madera","Trampa cuca ud","Spray cucaracha","Ajax polvo",
+  "Detergente Ropa","Suavizante","Lejia Ropa","Bayetas Microfibra ud","Blanqueador perborato",
+  "Estropajos Acero","Plumeros caja","Bolsa asp Bosh ud","Bolsa asp Moreria","Bolsa asp Fomento",
+  "Guantes TM","Quitapelusa ud","Vinagre limp","Spray mopa","Jabon lagarto ud","Sal lavavajillas",
+  "Escobilla bano set","Friegas madera","Trampa cuca ud","Spray cucaracha","Ajax polvo",
   "Pilas AAA ud","Pilas AA ud","Plumero clasico","Recambo cepillo","Bicarbonato"
 ];
 
@@ -27,142 +27,121 @@ const INFREQUENT_APTS = [
   "VALENCIA","OLIVAR","INFANTE","ZURBANO","ROBLEDO","MOSTENSES","ANTONIO LOPES","MORENO NIETO"
 ];
 
-const ALL_APTS = [...FREQUENT_APTS, ...INFREQUENT_APTS];
-
-const PROFILES = ["Joaquín","Nanda","Cari","Vanessa"];
+const PROFILES = ["Joaquin","Nanda","Cari","Vanessa"];
 
 const PROFILE_COLORS = {
-  "Joaquín": "#36D1DC",
-  "Nanda": "#f59e0b",
-  "Cari": "#ec4899",
+  "Joaquin": "#36D1DC",
+  "Nanda":   "#f59e0b",
+  "Cari":    "#ec4899",
   "Vanessa": "#8b5cf6"
 };
 
+const PROFILE_INITIALS = {
+  "Joaquin": "J",
+  "Nanda":   "N",
+  "Cari":    "C",
+  "Vanessa": "V"
+};
+
 // ─────────────────────────────────────────────
-// SUPABASE INIT CON SALVAVIDAS
+// SUPABASE
 // ─────────────────────────────────────────────
 function getSupabaseClient(url, key) {
   if (!url || !key) return null;
-  try {
-    return createClient(url, key);
-  } catch {
-    return null;
-  }
+  try { return createClient(url, key); } catch { return null; }
 }
 
-function loadFromLocalStorage() {
+function loadCreds() {
   try {
     return {
-      url: localStorage.getItem("nuba_sb_url") || "",
-      key: localStorage.getItem("nuba_sb_key") || "",
+      url: localStorage.getItem("nuba_sb_url") || process.env.REACT_APP_SUPABASE_URL || "",
+      key: localStorage.getItem("nuba_sb_key") || process.env.REACT_APP_SUPABASE_ANON_KEY || ""
     };
   } catch {
-    return { url: "", key: "" };
+    return {
+      url: process.env.REACT_APP_SUPABASE_URL || "",
+      key: process.env.REACT_APP_SUPABASE_ANON_KEY || ""
+    };
   }
 }
 
 // ─────────────────────────────────────────────
-// PANTALLA CONFIGURACIÓN INICIAL (SALVAVIDAS)
+// ESTILOS GLOBALES
+// ─────────────────────────────────────────────
+const C = "#36D1DC";
+const FONT = "'Nunito', sans-serif";
+
+const css = `
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f4f6f9; font-family: ${FONT}; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid ${C}; outline-offset: 0; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #f0f0f0; }
+  ::-webkit-scrollbar-thumb { background: #36D1DC55; border-radius: 3px; }
+  .tab-btn { background: none; border: none; cursor: pointer; font-family: ${FONT}; }
+  .card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .product-row:hover { background: #f8fdfe; }
+  .nav-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: none; background: none; cursor: pointer; font-family: ${FONT}; color: #aaa; font-size: 11px; font-weight: 600; flex: 1; transition: color 0.2s; }
+  .nav-tab.active { color: ${C}; }
+  .nav-tab svg { transition: stroke 0.2s; }
+  .btn-primary { background: ${C}; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 700; cursor: pointer; font-family: ${FONT}; font-size: 14px; transition: opacity 0.2s; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+`;
+
+// ─────────────────────────────────────────────
+// ICONOS SVG
+// ─────────────────────────────────────────────
+const Icon = {
+  stock: (c="#aaa") => <svg width="22" height="22" fill="none" stroke={c} strokeWidth="2" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>,
+  create: (c="#aaa") => <svg width="22" height="22" fill="none" stroke={c} strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
+  pending: (c="#aaa") => <svg width="22" height="22" fill="none" stroke={c} strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  history: (c="#aaa") => <svg width="22" height="22" fill="none" stroke={c} strokeWidth="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+  kpi: (c="#aaa") => <svg width="22" height="22" fill="none" stroke={c} strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  logout: (c="#aaa") => <svg width="18" height="18" fill="none" stroke={c} strokeWidth="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  search: () => <svg width="16" height="16" fill="none" stroke="#aaa" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  apt: () => <svg width="16" height="16" fill="none" stroke={C} strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  chevDown: () => <svg width="16" height="16" fill="none" stroke="#aaa" strokeWidth="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>,
+  chevUp: () => <svg width="16" height="16" fill="none" stroke="#aaa" strokeWidth="2" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>,
+  check: () => <svg width="16" height="16" fill="none" stroke="#22c55e" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
+  export: () => <svg width="15" height="15" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+};
+
+// ─────────────────────────────────────────────
+// PANTALLA CONFIG (SALVAVIDAS)
 // ─────────────────────────────────────────────
 function ConfigScreen({ onConnect }) {
   const [url, setUrl] = useState("");
   const [key, setKey] = useState("");
-  const [error, setError] = useState("");
+  const [err, setErr] = useState("");
 
-  function handleConnect() {
-    if (!url.trim() || !key.trim()) {
-      setError("Por favor, introduce ambos valores.");
-      return;
-    }
+  function handle() {
+    if (!url.trim() || !key.trim()) { setErr("Introduce ambos valores."); return; }
     try {
       localStorage.setItem("nuba_sb_url", url.trim());
       localStorage.setItem("nuba_sb_key", key.trim());
       onConnect(url.trim(), key.trim());
-    } catch {
-      setError("No se pudo guardar. Verifica los valores.");
-    }
+    } catch { setErr("No se pudo guardar."); }
   }
 
   return (
-    <div style={{
-      minHeight:"100vh", background:"linear-gradient(135deg,#0f2027,#203a43,#2c5364)",
-      display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Nunito',sans-serif", padding:"1rem"
-    }}>
-      <div style={{
-        background:"rgba(255,255,255,0.05)", backdropFilter:"blur(20px)",
-        border:"1px solid rgba(54,209,220,0.3)", borderRadius:"1.5rem",
-        padding:"2.5rem 2rem", maxWidth:"420px", width:"100%", boxShadow:"0 25px 60px rgba(0,0,0,0.5)"
-      }}>
-        <div style={{textAlign:"center", marginBottom:"2rem"}}>
-          <div style={{
-            width:"72px", height:"72px", borderRadius:"1rem",
-            background:"linear-gradient(135deg,#36D1DC,#5B86E5)",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            margin:"0 auto 1rem", fontSize:"2rem", boxShadow:"0 8px 24px rgba(54,209,220,0.4)"
-          }}>🏠</div>
-          <h1 style={{color:"#36D1DC", fontSize:"1.6rem", fontWeight:"800", margin:"0 0 0.25rem"}}>
-            Configuración Inicial
-          </h1>
-          <p style={{color:"rgba(255,255,255,0.6)", fontSize:"0.85rem", margin:0}}>
-            NUBA Apartamentos · Gestión Logística
-          </p>
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f2027,#203a43,#2c5364)",display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",fontFamily:FONT}}>
+      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",border:"1px solid rgba(54,209,220,0.3)",borderRadius:"20px",padding:"2.5rem 2rem",maxWidth:"420px",width:"100%"}}>
+        <div style={{textAlign:"center",marginBottom:"2rem"}}>
+          <div style={{width:"72px",height:"72px",borderRadius:"16px",background:`linear-gradient(135deg,${C},#5B86E5)`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1rem",fontSize:"2rem"}}>🏠</div>
+          <h1 style={{color:C,fontSize:"1.5rem",fontWeight:"800"}}>Configuracion NUBA</h1>
+          <p style={{color:"rgba(255,255,255,0.5)",fontSize:"0.85rem",marginTop:"4px"}}>Gestión Logística · Apartamentos</p>
         </div>
-
-        <p style={{color:"rgba(255,255,255,0.75)", fontSize:"0.85rem", marginBottom:"1.5rem", lineHeight:"1.5", textAlign:"center"}}>
-          Las credenciales de Supabase no están disponibles. Introdúcelas manualmente para continuar.
-        </p>
-
-        {error && (
-          <div style={{
-            background:"rgba(239,68,68,0.2)", border:"1px solid rgba(239,68,68,0.4)",
-            borderRadius:"0.5rem", padding:"0.75rem", color:"#fca5a5",
-            fontSize:"0.8rem", marginBottom:"1rem", textAlign:"center"
-          }}>{error}</div>
-        )}
-
-        <label style={{color:"rgba(255,255,255,0.7)", fontSize:"0.8rem", display:"block", marginBottom:"0.4rem"}}>
-          Supabase URL
-        </label>
-        <input
-          value={url} onChange={e=>setUrl(e.target.value)}
-          placeholder="https://xxxx.supabase.co"
-          style={{
-            width:"100%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(54,209,220,0.3)",
-            borderRadius:"0.6rem", padding:"0.75rem", color:"white", fontSize:"0.9rem",
-            marginBottom:"1rem", outline:"none", boxSizing:"border-box"
-          }}
-        />
-
-        <label style={{color:"rgba(255,255,255,0.7)", fontSize:"0.8rem", display:"block", marginBottom:"0.4rem"}}>
-          Supabase Anon Key
-        </label>
-        <textarea
-          value={key} onChange={e=>setKey(e.target.value)}
-          placeholder="eyJhbGciOiJIUzI1NiIsIn..."
-          rows={3}
-          style={{
-            width:"100%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(54,209,220,0.3)",
-            borderRadius:"0.6rem", padding:"0.75rem", color:"white", fontSize:"0.85rem",
-            marginBottom:"1.5rem", outline:"none", resize:"vertical", boxSizing:"border-box",
-            fontFamily:"monospace"
-          }}
-        />
-
-        <button
-          onClick={handleConnect}
-          style={{
-            width:"100%", background:"linear-gradient(135deg,#36D1DC,#5B86E5)",
-            border:"none", borderRadius:"0.75rem", padding:"0.9rem",
-            color:"white", fontWeight:"800", fontSize:"1rem", cursor:"pointer",
-            boxShadow:"0 8px 24px rgba(54,209,220,0.4)"
-          }}
-        >
-          🔗 Conectar y Entrar
-        </button>
-
-        <p style={{color:"rgba(255,255,255,0.35)", fontSize:"0.72rem", textAlign:"center", marginTop:"1rem"}}>
-          Las claves se guardan en localStorage de este dispositivo
-        </p>
+        {err && <div style={{background:"rgba(239,68,68,0.2)",border:"1px solid rgba(239,68,68,0.4)",borderRadius:"8px",padding:"10px",color:"#fca5a5",fontSize:"0.82rem",marginBottom:"1rem",textAlign:"center"}}>{err}</div>}
+        <label style={{color:"rgba(255,255,255,0.6)",fontSize:"0.78rem",display:"block",marginBottom:"4px"}}>Supabase URL</label>
+        <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://xxxx.supabase.co"
+          style={{width:"100%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(54,209,220,0.3)",borderRadius:"8px",padding:"10px",color:"white",fontSize:"0.9rem",marginBottom:"1rem"}} />
+        <label style={{color:"rgba(255,255,255,0.6)",fontSize:"0.78rem",display:"block",marginBottom:"4px"}}>Anon Key</label>
+        <textarea value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJhbGci..." rows={3}
+          style={{width:"100%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(54,209,220,0.3)",borderRadius:"8px",padding:"10px",color:"white",fontSize:"0.82rem",marginBottom:"1.5rem",fontFamily:"monospace",resize:"vertical"}} />
+        <button onClick={handle} className="btn-primary" style={{width:"100%",padding:"12px",fontSize:"1rem"}}>Conectar y Entrar</button>
+        <p style={{color:"rgba(255,255,255,0.3)",fontSize:"0.7rem",textAlign:"center",marginTop:"10px"}}>Claves guardadas en localStorage</p>
       </div>
     </div>
   );
@@ -174,84 +153,36 @@ function ConfigScreen({ onConnect }) {
 function LoginScreen({ onLogin }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
-  const [error, setError] = useState("");
+  const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleLogin() {
+  function handle() {
     setLoading(true);
     setTimeout(() => {
       if (user === "logistica@nubagestion.es" && pass === "Nuba2026") {
+        try { localStorage.setItem("nuba_logged", "1"); } catch {}
         onLogin();
       } else {
-        setError("Credenciales incorrectas.");
+        setErr("Usuario o contraseña incorrectos.");
         setLoading(false);
       }
-    }, 500);
+    }, 400);
   }
 
   return (
-    <div style={{
-      minHeight:"100vh", background:"linear-gradient(135deg,#0f2027,#203a43,#2c5364)",
-      display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Nunito',sans-serif", padding:"1rem"
-    }}>
-      <div style={{
-        background:"rgba(255,255,255,0.05)", backdropFilter:"blur(20px)",
-        border:"1px solid rgba(54,209,220,0.3)", borderRadius:"1.5rem",
-        padding:"2.5rem 2rem", maxWidth:"400px", width:"100%", boxShadow:"0 25px 60px rgba(0,0,0,0.5)"
-      }}>
-        <div style={{textAlign:"center", marginBottom:"2rem"}}>
-          <div style={{
-            width:"80px", height:"80px", borderRadius:"1.25rem",
-            background:"linear-gradient(135deg,#36D1DC,#5B86E5)",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            margin:"0 auto 1rem", fontSize:"2.5rem", boxShadow:"0 8px 24px rgba(54,209,220,0.4)"
-          }}>🏠</div>
-          <h1 style={{color:"white", fontSize:"1.8rem", fontWeight:"800", margin:"0 0 0.25rem"}}>
-            NUBA
-          </h1>
-          <p style={{color:"#36D1DC", fontSize:"0.9rem", margin:0, fontWeight:"600"}}>
-            Gestión Logística
-          </p>
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f2027,#203a43,#2c5364)",display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",fontFamily:FONT}}>
+      <div style={{background:"rgba(255,255,255,0.06)",backdropFilter:"blur(20px)",border:"1px solid rgba(54,209,220,0.3)",borderRadius:"20px",padding:"2.5rem 2rem",maxWidth:"380px",width:"100%"}}>
+        <div style={{textAlign:"center",marginBottom:"2rem"}}>
+          <div style={{width:"80px",height:"80px",borderRadius:"20px",background:`linear-gradient(135deg,${C},#5B86E5)`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1rem",fontSize:"2.5rem"}}>🏠</div>
+          <h1 style={{color:"white",fontSize:"1.8rem",fontWeight:"900"}}>NUBA</h1>
+          <p style={{color:C,fontSize:"0.9rem",fontWeight:"600"}}>Gestión Logística</p>
         </div>
-
-        {error && (
-          <div style={{
-            background:"rgba(239,68,68,0.2)", border:"1px solid rgba(239,68,68,0.4)",
-            borderRadius:"0.5rem", padding:"0.75rem", color:"#fca5a5",
-            fontSize:"0.85rem", marginBottom:"1rem", textAlign:"center"
-          }}>{error}</div>
-        )}
-
-        <input
-          type="email" value={user} onChange={e=>setUser(e.target.value)}
-          placeholder="Usuario"
-          onKeyDown={e=>e.key==="Enter"&&handleLogin()}
-          style={{
-            width:"100%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(54,209,220,0.3)",
-            borderRadius:"0.6rem", padding:"0.85rem", color:"white", fontSize:"0.95rem",
-            marginBottom:"1rem", outline:"none", boxSizing:"border-box"
-          }}
-        />
-        <input
-          type="password" value={pass} onChange={e=>setPass(e.target.value)}
-          placeholder="Contraseña"
-          onKeyDown={e=>e.key==="Enter"&&handleLogin()}
-          style={{
-            width:"100%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(54,209,220,0.3)",
-            borderRadius:"0.6rem", padding:"0.85rem", color:"white", fontSize:"0.95rem",
-            marginBottom:"1.5rem", outline:"none", boxSizing:"border-box"
-          }}
-        />
-
-        <button
-          onClick={handleLogin} disabled={loading}
-          style={{
-            width:"100%", background:"linear-gradient(135deg,#36D1DC,#5B86E5)",
-            border:"none", borderRadius:"0.75rem", padding:"0.9rem",
-            color:"white", fontWeight:"800", fontSize:"1rem", cursor:"pointer",
-            opacity:loading?0.7:1, boxShadow:"0 8px 24px rgba(54,209,220,0.4)"
-          }}
-        >
+        {err && <div style={{background:"rgba(239,68,68,0.2)",border:"1px solid rgba(239,68,68,0.4)",borderRadius:"8px",padding:"10px",color:"#fca5a5",fontSize:"0.85rem",marginBottom:"1rem",textAlign:"center"}}>{err}</div>}
+        <input type="email" value={user} onChange={e=>setUser(e.target.value)} placeholder="Usuario" onKeyDown={e=>e.key==="Enter"&&handle()}
+          style={{width:"100%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(54,209,220,0.3)",borderRadius:"8px",padding:"12px",color:"white",fontSize:"0.95rem",marginBottom:"12px"}} />
+        <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Contraseña" onKeyDown={e=>e.key==="Enter"&&handle()}
+          style={{width:"100%",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(54,209,220,0.3)",borderRadius:"8px",padding:"12px",color:"white",fontSize:"0.95rem",marginBottom:"20px"}} />
+        <button onClick={handle} disabled={loading} className="btn-primary" style={{width:"100%",padding:"13px",fontSize:"1rem"}}>
           {loading ? "Accediendo..." : "Entrar →"}
         </button>
       </div>
@@ -260,42 +191,21 @@ function LoginScreen({ onLogin }) {
 }
 
 // ─────────────────────────────────────────────
-// SELECTOR DE PERFIL
+// SELECTOR PERFIL
 // ─────────────────────────────────────────────
 function ProfileSelector({ onSelect }) {
   return (
-    <div style={{
-      minHeight:"100vh", background:"linear-gradient(135deg,#0f2027,#203a43,#2c5364)",
-      display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Nunito',sans-serif", padding:"1rem"
-    }}>
-      <div style={{textAlign:"center", maxWidth:"480px", width:"100%"}}>
-        <h2 style={{color:"white", fontSize:"1.5rem", fontWeight:"800", marginBottom:"0.5rem"}}>
-          ¿Quién eres hoy?
-        </h2>
-        <p style={{color:"rgba(255,255,255,0.5)", fontSize:"0.9rem", marginBottom:"2rem"}}>
-          Selecciona tu perfil para continuar
-        </p>
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem"}}>
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f2027,#203a43,#2c5364)",display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",fontFamily:FONT}}>
+      <div style={{maxWidth:"420px",width:"100%",textAlign:"center"}}>
+        <h2 style={{color:"white",fontSize:"1.5rem",fontWeight:"800",marginBottom:"6px"}}>Quien eres hoy?</h2>
+        <p style={{color:"rgba(255,255,255,0.4)",fontSize:"0.9rem",marginBottom:"2rem"}}>Selecciona tu perfil para continuar</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
           {PROFILES.map(p => (
-            <button key={p} onClick={()=>onSelect(p)} style={{
-              background:"rgba(255,255,255,0.06)", border:`2px solid ${PROFILE_COLORS[p]}33`,
-              borderRadius:"1.25rem", padding:"1.5rem 1rem", cursor:"pointer",
-              transition:"all 0.2s", color:"white", fontWeight:"700", fontSize:"1.1rem",
-              fontFamily:"'Nunito',sans-serif"
-            }}
-            onMouseEnter={e=>{
-              e.currentTarget.style.background=`${PROFILE_COLORS[p]}22`;
-              e.currentTarget.style.borderColor=PROFILE_COLORS[p];
-              e.currentTarget.style.transform="scale(1.04)";
-            }}
-            onMouseLeave={e=>{
-              e.currentTarget.style.background="rgba(255,255,255,0.06)";
-              e.currentTarget.style.borderColor=`${PROFILE_COLORS[p]}33`;
-              e.currentTarget.style.transform="scale(1)";
-            }}>
-              <div style={{fontSize:"2.5rem", marginBottom:"0.5rem"}}>
-                {p==="Joaquín"?"👨‍💼":p==="Nanda"?"👩‍💼":p==="Cari"?"👩‍🔧":"👩‍💻"}
-              </div>
+            <button key={p} onClick={()=>{ try{localStorage.setItem("nuba_profile",p);}catch{} onSelect(p); }}
+              style={{background:"rgba(255,255,255,0.06)",border:`2px solid ${PROFILE_COLORS[p]}44`,borderRadius:"16px",padding:"1.5rem 1rem",cursor:"pointer",color:"white",fontWeight:"700",fontSize:"1.1rem",fontFamily:FONT,transition:"all 0.2s"}}
+              onMouseEnter={e=>{e.currentTarget.style.background=`${PROFILE_COLORS[p]}22`;e.currentTarget.style.borderColor=PROFILE_COLORS[p];}}
+              onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.06)";e.currentTarget.style.borderColor=`${PROFILE_COLORS[p]}44`;}}>
+              <div style={{fontSize:"2.2rem",marginBottom:"8px"}}>{p==="Joaquin"?"👨‍💼":p==="Nanda"?"👩‍💼":p==="Cari"?"👩‍🔧":"👩‍💻"}</div>
               {p}
             </button>
           ))}
@@ -306,340 +216,275 @@ function ProfileSelector({ onSelect }) {
 }
 
 // ─────────────────────────────────────────────
-// ESTILOS COMUNES
+// TAB 1: STOCK (Trastero + Apartamentos)
 // ─────────────────────────────────────────────
-const S = {
-  card: {
-    background:"rgba(255,255,255,0.05)", border:"1px solid rgba(54,209,220,0.2)",
-    borderRadius:"1rem", padding:"1.25rem", marginBottom:"1rem"
-  },
-  input: {
-    background:"rgba(255,255,255,0.08)", border:"1px solid rgba(54,209,220,0.3)",
-    borderRadius:"0.6rem", padding:"0.65rem 0.9rem", color:"white", fontSize:"0.9rem",
-    outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"'Nunito',sans-serif"
-  },
-  btn: (color="#36D1DC") => ({
-    background:`linear-gradient(135deg,${color},${color}cc)`,
-    border:"none", borderRadius:"0.6rem", padding:"0.6rem 1.1rem",
-    color:"white", fontWeight:"700", cursor:"pointer", fontSize:"0.85rem",
-    fontFamily:"'Nunito',sans-serif"
-  }),
-  btnSm: {
-    background:"rgba(54,209,220,0.2)", border:"1px solid rgba(54,209,220,0.4)",
-    borderRadius:"0.4rem", padding:"0.3rem 0.7rem", color:"#36D1DC",
-    fontWeight:"700", cursor:"pointer", fontSize:"0.8rem", fontFamily:"'Nunito',sans-serif"
-  },
-  label: {color:"rgba(255,255,255,0.6)", fontSize:"0.78rem", marginBottom:"0.3rem", display:"block"},
-  th: {
-    color:"#36D1DC", fontSize:"0.75rem", fontWeight:"700", textTransform:"uppercase",
-    padding:"0.6rem 0.75rem", textAlign:"left", borderBottom:"1px solid rgba(54,209,220,0.2)"
-  },
-  td: {
-    padding:"0.65rem 0.75rem", color:"rgba(255,255,255,0.85)", fontSize:"0.875rem",
-    borderBottom:"1px solid rgba(255,255,255,0.06)"
-  }
-};
-
-// ─────────────────────────────────────────────
-// TAB 1: TRASTERO BASE
-// ─────────────────────────────────────────────
-function TrasteroTab({ supabase }) {
-  const [stock, setStock] = useState({});
+function StockTab({ supabase }) {
+  const [view, setView] = useState("trastero"); // "trastero" | "apartamentos"
+  const [trastero, setTrastero] = useState({});
+  const [aptStock, setAptStock] = useState({});
+  const [selectedApt, setSelectedApt] = useState(null);
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState({});
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState({});
+  const [loadingApt, setLoadingApt] = useState(false);
 
-  useEffect(() => { fetchStock(); }, []);
+  useEffect(() => { fetchTrastero(); }, []);
 
-  async function fetchStock() {
-    if (!supabase) return;
+  async function fetchTrastero() {
     const { data } = await supabase.from("trastero").select("*");
-    if (data) {
-      const map = {};
-      data.forEach(r => { map[r.producto] = r.cantidad; });
-      setStock(map);
+    if (data) { const m={}; data.forEach(r=>m[r.producto]=r.cantidad); setTrastero(m); }
+  }
+
+  async function fetchApt(apt) {
+    setLoadingApt(true);
+    const { data } = await supabase.from("stock_apartamentos").select("*").eq("apartamento", apt);
+    if (data) { const m={}; data.forEach(r=>m[r.producto]=r.cantidad); setAptStock(m); }
+    setLoadingApt(false);
+  }
+
+  async function adjustStock(product, delta, isApt) {
+    const key = `${isApt?selectedApt:"t"}_${product}`;
+    setSaving(p=>({...p,[key]:true}));
+    if (!isApt) {
+      const cur = trastero[product] ?? 0;
+      const nv = Math.max(0, cur + delta);
+      await supabase.from("trastero").upsert({producto:product,cantidad:nv},{onConflict:"producto"});
+      setTrastero(p=>({...p,[product]:nv}));
+    } else {
+      const cur = aptStock[product] ?? 0;
+      const nv = Math.max(0, cur + delta);
+      await supabase.from("stock_apartamentos").upsert({apartamento:selectedApt,producto:product,cantidad:nv},{onConflict:"apartamento,producto"});
+      setAptStock(p=>({...p,[product]:nv}));
     }
+    setSaving(p=>({...p,[key]:false}));
   }
 
   const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(search.toLowerCase()));
+  const totalTrastero = Object.values(trastero).reduce((a,b)=>a+(b||0),0);
+  const lowStock = Object.values(trastero).filter(v=>(v||0)<5).length;
+  const totalApt = Object.values(aptStock).reduce((a,b)=>a+(b||0),0);
 
-  async function saveEdit(product) {
-    const val = parseInt(editing[product] ?? stock[product] ?? 0);
-    setSaving(true);
-    await supabase.from("trastero").upsert({ producto: product, cantidad: val }, { onConflict:"producto" });
-    setStock(prev => ({ ...prev, [product]: val }));
-    setEditing(prev => { const n={...prev}; delete n[product]; return n; });
-    setSaving(false);
-  }
+  function ProductRow({ product, qty, onPlus, onMinus, isSaving }) {
+    const [localQty, setLocalQty] = useState(qty);
+    useEffect(()=>setLocalQty(qty),[qty]);
 
-  return (
-    <div>
-      <div style={{display:"flex", gap:"0.75rem", marginBottom:"1.25rem", alignItems:"center"}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="🔍 Buscar producto..."
-          style={{...S.input, flex:1}}
-        />
-        <span style={{color:"rgba(255,255,255,0.4)", fontSize:"0.8rem", whiteSpace:"nowrap"}}>
-          {filtered.length} / {PRODUCTS.length}
-        </span>
-      </div>
-      <div style={{overflowX:"auto"}}>
-        <table style={{width:"100%", borderCollapse:"collapse"}}>
-          <thead>
-            <tr>
-              <th style={S.th}>#</th>
-              <th style={S.th}>Producto</th>
-              <th style={{...S.th, textAlign:"center"}}>Stock</th>
-              <th style={S.th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p, i) => (
-              <tr key={p} style={{background: i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                <td style={{...S.td, color:"rgba(255,255,255,0.3)", fontSize:"0.75rem", width:"2rem"}}>
-                  {PRODUCTS.indexOf(p)+1}
-                </td>
-                <td style={S.td}>{p}</td>
-                <td style={{...S.td, textAlign:"center", width:"5rem"}}>
-                  <input
-                    type="number" min="0"
-                    value={editing[p] !== undefined ? editing[p] : (stock[p] ?? 0)}
-                    onChange={e => setEditing(prev => ({...prev, [p]: e.target.value}))}
-                    style={{
-                      ...S.input, width:"70px", textAlign:"center", padding:"0.35rem",
-                      color: (stock[p]??0) < 3 ? "#f87171" : "#4ade80"
-                    }}
-                  />
-                </td>
-                <td style={{...S.td, width:"5rem"}}>
-                  {editing[p] !== undefined && (
-                    <button onClick={()=>saveEdit(p)} disabled={saving}
-                      style={{...S.btnSm, background:"rgba(74,222,128,0.2)", borderColor:"#4ade80", color:"#4ade80"}}>
-                      ✓ OK
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// TAB 2: STOCK APARTAMENTOS
-// ─────────────────────────────────────────────
-function StockAptTab({ supabase }) {
-  const [selected, setSelected] = useState(null);
-  const [aptStock, setAptStock] = useState({});
-  const [loading, setLoading] = useState(false);
-
-  async function selectApt(apt) {
-    setSelected(apt);
-    setLoading(true);
-    const { data } = await supabase.from("stock_apartamentos")
-      .select("*").eq("apartamento", apt);
-    if (data) {
-      const map = {};
-      data.forEach(r => { map[r.producto] = r.cantidad; });
-      setAptStock(map);
+    async function handleInput(val) {
+      const n = parseInt(val)||0;
+      setLocalQty(n);
+      const key = `input_${product}`;
+      setSaving(p=>({...p,[key]:true}));
+      if (view==="trastero") {
+        await supabase.from("trastero").upsert({producto:product,cantidad:n},{onConflict:"producto"});
+        setTrastero(p=>({...p,[product]:n}));
+      } else {
+        await supabase.from("stock_apartamentos").upsert({apartamento:selectedApt,producto:product,cantidad:n},{onConflict:"apartamento,producto"});
+        setAptStock(p=>({...p,[product]:n}));
+      }
+      setSaving(p=>({...p,[key]:false}));
     }
-    setLoading(false);
-  }
 
-  function AptButton({ apt, freq }) {
-    const isSelected = selected === apt;
     return (
-      <button onClick={()=>selectApt(apt)} style={{
-        background: isSelected ? "linear-gradient(135deg,#36D1DC,#5B86E5)" : "rgba(255,255,255,0.05)",
-        border: `1px solid ${isSelected ? "#36D1DC" : freq ? "rgba(54,209,220,0.2)" : "rgba(255,255,255,0.1)"}`,
-        borderRadius:"0.6rem", padding:"0.6rem 0.5rem", color:isSelected?"white":"rgba(255,255,255,0.75)",
-        fontWeight:isSelected?"700":"600", cursor:"pointer", fontSize:"0.72rem",
-        fontFamily:"'Nunito',sans-serif", textAlign:"center", transition:"all 0.15s"
-      }}>{apt}</button>
+      <div className="product-row" style={{display:"flex",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f0f0f0",gap:"10px"}}>
+        <span style={{flex:1,fontSize:"14px",color:"#333",fontWeight:"600"}}>{product}</span>
+        <button onClick={onMinus} disabled={isSaving}
+          style={{width:"32px",height:"32px",borderRadius:"50%",border:"1px solid #e0e0e0",background:"white",cursor:"pointer",fontSize:"18px",color:"#666",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>−</button>
+        <input type="number" min="0" value={localQty}
+          onChange={e=>setLocalQty(e.target.value)}
+          onBlur={e=>handleInput(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&handleInput(e.target.value)}
+          style={{width:"52px",textAlign:"center",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"5px",fontSize:"15px",fontWeight:"700",color:qty===0?"#ccc":qty<3?"#ef4444":"#333",fontFamily:FONT}} />
+        <button onClick={onPlus} disabled={isSaving}
+          style={{width:"32px",height:"32px",borderRadius:"50%",border:"none",background:C,cursor:"pointer",fontSize:"18px",color:"white",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
+      </div>
     );
   }
 
   return (
-    <div>
-      {!selected ? (
-        <div>
-          <p style={{color:"rgba(255,255,255,0.5)", fontSize:"0.85rem", marginBottom:"1rem"}}>
-            Elige un apartamento para ver su stock asignado
-          </p>
-          <p style={{color:"#36D1DC", fontSize:"0.78rem", fontWeight:"700", marginBottom:"0.5rem"}}>
-            FRECUENTES ({FREQUENT_APTS.length})
-          </p>
-          <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))", gap:"0.5rem", marginBottom:"1.25rem"}}>
-            {FREQUENT_APTS.map(a => <AptButton key={a} apt={a} freq />)}
+    <div style={{paddingBottom:"80px"}}>
+      {/* Toggle */}
+      <div style={{display:"flex",background:"white",borderRadius:"12px",padding:"4px",marginBottom:"16px",boxShadow:"0 1px 4px rgba(0,0,0,0.08)"}}>
+        <button onClick={()=>{setView("trastero");setSearch("");}} style={{flex:1,padding:"9px",borderRadius:"9px",border:"none",background:view==="trastero"?C:"transparent",color:view==="trastero"?"white":"#666",fontWeight:"700",cursor:"pointer",fontFamily:FONT,fontSize:"13px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>
+          📦 Trastero Central
+        </button>
+        <button onClick={()=>{setView("apartamentos");setSearch("");setSelectedApt(null);}} style={{flex:1,padding:"9px",borderRadius:"9px",border:"none",background:view==="apartamentos"?C:"transparent",color:view==="apartamentos"?"white":"#666",fontWeight:"700",cursor:"pointer",fontFamily:FONT,fontSize:"13px",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>
+          🏠 Apartamentos
+        </button>
+      </div>
+
+      {view==="trastero" && (
+        <>
+          {/* Stats */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"16px"}}>
+            <div className="card" style={{padding:"16px"}}>
+              <div style={{fontSize:"12px",color:"#888",fontWeight:"600",marginBottom:"4px"}}>Total Unidades</div>
+              <div style={{fontSize:"28px",fontWeight:"900",color:"#222"}}>{totalTrastero.toLocaleString()}</div>
+            </div>
+            <div className="card" style={{padding:"16px"}}>
+              <div style={{fontSize:"12px",color:"#ef4444",fontWeight:"600",marginBottom:"4px"}}>Stock Bajo (&lt;5)</div>
+              <div style={{fontSize:"28px",fontWeight:"900",color:"#ef4444"}}>{lowStock}</div>
+            </div>
           </div>
-          <p style={{color:"rgba(255,255,255,0.4)", fontSize:"0.78rem", fontWeight:"700", marginBottom:"0.5rem"}}>
-            INFRECUENTES ({INFREQUENT_APTS.length})
-          </p>
-          <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))", gap:"0.5rem"}}>
-            {INFREQUENT_APTS.map(a => <AptButton key={a} apt={a} />)}
+          {/* Buscador */}
+          <div className="card" style={{padding:"10px 14px",marginBottom:"12px",display:"flex",alignItems:"center",gap:"8px"}}>
+            {Icon.search()}
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar producto..."
+              style={{border:"none",outline:"none",flex:1,fontSize:"14px",fontFamily:FONT,color:"#333"}} />
           </div>
-        </div>
-      ) : (
-        <div>
-          <div style={{display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem"}}>
-            <button onClick={()=>setSelected(null)} style={S.btnSm}>← Volver</button>
-            <h3 style={{color:"#36D1DC", fontWeight:"800", fontSize:"1.1rem", margin:0}}>
-              🏠 {selected}
-            </h3>
+          {/* Lista */}
+          <div className="card">
+            {filtered.map(p => (
+              <ProductRow key={p} product={p} qty={trastero[p]??0}
+                onPlus={()=>adjustStock(p,1,false)} onMinus={()=>adjustStock(p,-1,false)}
+                isSaving={!!saving[`t_${p}`]} />
+            ))}
           </div>
-          {loading ? (
-            <p style={{color:"rgba(255,255,255,0.5)"}}>Cargando...</p>
-          ) : (
-            <table style={{width:"100%", borderCollapse:"collapse"}}>
-              <thead>
-                <tr>
-                  <th style={S.th}>Producto</th>
-                  <th style={{...S.th, textAlign:"center"}}>Cantidad</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PRODUCTS.map((p, i) => (
-                  <tr key={p} style={{background: i%2===0?"transparent":"rgba(255,255,255,0.02)"}}>
-                    <td style={S.td}>{p}</td>
-                    <td style={{
-                      ...S.td, textAlign:"center", fontWeight:"700",
-                      color: (aptStock[p]??0)===0 ? "rgba(255,255,255,0.25)" : "#4ade80"
-                    }}>
-                      {aptStock[p] ?? 0}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        </>
+      )}
+
+      {view==="apartamentos" && !selectedApt && (
+        <>
+          <p style={{color:"#888",fontSize:"13px",marginBottom:"12px"}}>Selecciona un apartamento para ver y editar su stock</p>
+          <div className="card" style={{marginBottom:"12px"}}>
+            <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0",fontSize:"11px",fontWeight:"700",color:C,textTransform:"uppercase",letterSpacing:"0.5px"}}>Frecuentes</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:"8px",padding:"12px"}}>
+              {FREQUENT_APTS.map(a=>(
+                <button key={a} onClick={()=>{setSelectedApt(a);fetchApt(a);}}
+                  style={{background:"#f8fdfe",border:`1px solid ${C}33`,borderRadius:"8px",padding:"10px 8px",cursor:"pointer",color:"#333",fontWeight:"700",fontSize:"12px",fontFamily:FONT,textAlign:"center"}}>
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="card">
+            <div style={{padding:"10px 16px",borderBottom:"1px solid #f0f0f0",fontSize:"11px",fontWeight:"700",color:"#aaa",textTransform:"uppercase",letterSpacing:"0.5px"}}>Infrecuentes</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:"8px",padding:"12px"}}>
+              {INFREQUENT_APTS.map(a=>(
+                <button key={a} onClick={()=>{setSelectedApt(a);fetchApt(a);}}
+                  style={{background:"#fafafa",border:"1px solid #eee",borderRadius:"8px",padding:"10px 8px",cursor:"pointer",color:"#555",fontWeight:"700",fontSize:"12px",fontFamily:FONT,textAlign:"center"}}>
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {view==="apartamentos" && selectedApt && (
+        <>
+          <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"16px"}}>
+            <button onClick={()=>{setSelectedApt(null);setAptStock({});}}
+              style={{background:"white",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontSize:"13px",fontWeight:"600",fontFamily:FONT,color:"#555"}}>← Volver</button>
+            <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+              {Icon.apt()}
+              <span style={{fontWeight:"800",fontSize:"16px",color:"#222"}}>{selectedApt}</span>
+            </div>
+          </div>
+          {/* Stats apt */}
+          <div className="card" style={{padding:"14px 16px",marginBottom:"12px"}}>
+            <div style={{fontSize:"12px",color:"#888",fontWeight:"600"}}>Stock en {selectedApt}</div>
+            <div style={{fontSize:"24px",fontWeight:"900",color:"#222"}}>{totalApt} unidades</div>
+          </div>
+          {/* Buscador */}
+          <div className="card" style={{padding:"10px 14px",marginBottom:"12px",display:"flex",alignItems:"center",gap:"8px"}}>
+            {Icon.search()}
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar producto..."
+              style={{border:"none",outline:"none",flex:1,fontSize:"14px",fontFamily:FONT}} />
+          </div>
+          {loadingApt ? <div style={{textAlign:"center",padding:"2rem",color:"#aaa"}}>Cargando...</div> : (
+            <div className="card">
+              {filtered.map(p => (
+                <ProductRow key={p} product={p} qty={aptStock[p]??0}
+                  onPlus={()=>adjustStock(p,1,true)} onMinus={()=>adjustStock(p,-1,true)}
+                  isSaving={!!saving[`${selectedApt}_${p}`]} />
+              ))}
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// TAB 3: CREAR PEDIDO
+// TAB 2: CREAR PEDIDO
 // ─────────────────────────────────────────────
-function CreateOrderTab({ supabase, profile }) {
+function CreateTab({ supabase, profile }) {
   const [apt, setApt] = useState("");
   const [search, setSearch] = useState("");
   const [items, setItems] = useState([]);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
-  const filtered = PRODUCTS.filter(p =>
-    p.toLowerCase().includes(search.toLowerCase()) && !items.find(i=>i.producto===p)
-  );
+  const filtered = PRODUCTS.filter(p => p.toLowerCase().includes(search.toLowerCase()) && !items.find(i=>i.producto===p));
 
-  function addItem(product) {
-    setItems(prev => [...prev, { producto: product, cantidad: 1 }]);
-    setSearch("");
-  }
-
-  function updateQty(product, val) {
-    setItems(prev => prev.map(i => i.producto===product ? {...i, cantidad:parseInt(val)||0} : i));
-  }
-
-  function removeItem(product) {
-    setItems(prev => prev.filter(i => i.producto!==product));
-  }
+  function add(p) { setItems(prev=>[...prev,{producto:p,cantidad:1}]); setSearch(""); }
+  function remove(p) { setItems(prev=>prev.filter(i=>i.producto!==p)); }
+  function setQty(p,v) { setItems(prev=>prev.map(i=>i.producto===p?{...i,cantidad:parseInt(v)||1}:i)); }
 
   async function submit() {
-    if (!apt || items.length===0) return;
+    if (!apt||items.length===0) return;
     setSaving(true);
-    const { error } = await supabase.from("pedidos").insert({
-      apartamento: apt,
-      items: JSON.stringify(items),
-      estado: "pendiente",
-      creado_por: profile,
-      creado_at: new Date().toISOString()
+    await supabase.from("pedidos").insert({
+      apartamento:apt, items:JSON.stringify(items),
+      estado:"pendiente", creado_por:profile, creado_at:new Date().toISOString()
     });
-    setSaving(false);
-    if (!error) { setDone(true); setApt(""); setItems([]); setTimeout(()=>setDone(false),3000); }
+    setSaving(false); setDone(true); setApt(""); setItems([]);
+    setTimeout(()=>setDone(false),3000);
   }
 
   return (
-    <div>
+    <div style={{paddingBottom:"80px"}}>
       {done && (
-        <div style={{
-          background:"rgba(74,222,128,0.2)", border:"1px solid #4ade80",
-          borderRadius:"0.75rem", padding:"1rem", color:"#4ade80",
-          fontWeight:"700", textAlign:"center", marginBottom:"1rem"
-        }}>
-          ✅ Pedido creado correctamente
+        <div style={{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:"10px",padding:"14px",color:"#166534",fontWeight:"700",textAlign:"center",marginBottom:"16px",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}>
+          {Icon.check()} Pedido creado correctamente
         </div>
       )}
-
-      <div style={S.card}>
-        <label style={S.label}>Apartamento destino</label>
-        <select value={apt} onChange={e=>setApt(e.target.value)} style={{...S.input}}>
+      <div className="card" style={{padding:"16px",marginBottom:"12px"}}>
+        <label style={{fontSize:"12px",fontWeight:"700",color:"#888",display:"block",marginBottom:"6px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Apartamento destino</label>
+        <select value={apt} onChange={e=>setApt(e.target.value)}
+          style={{width:"100%",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"10px",fontSize:"14px",fontFamily:FONT,color:"#333",background:"white"}}>
           <option value="">— Seleccionar apartamento —</option>
-          <optgroup label="Frecuentes">
-            {FREQUENT_APTS.map(a=><option key={a} value={a}>{a}</option>)}
-          </optgroup>
-          <optgroup label="Infrecuentes">
-            {INFREQUENT_APTS.map(a=><option key={a} value={a}>{a}</option>)}
-          </optgroup>
+          <optgroup label="Frecuentes">{FREQUENT_APTS.map(a=><option key={a} value={a}>{a}</option>)}</optgroup>
+          <optgroup label="Infrecuentes">{INFREQUENT_APTS.map(a=><option key={a} value={a}>{a}</option>)}</optgroup>
         </select>
       </div>
 
-      <div style={S.card}>
-        <label style={S.label}>Añadir producto</label>
-        <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="🔍 Buscar y añadir..."
-          style={S.input}
-        />
+      <div className="card" style={{padding:"16px",marginBottom:"12px"}}>
+        <label style={{fontSize:"12px",fontWeight:"700",color:"#888",display:"block",marginBottom:"6px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Añadir producto</label>
+        <div style={{position:"relative"}}>
+          <div style={{position:"absolute",left:"10px",top:"50%",transform:"translateY(-50%)"}}>{Icon.search()}</div>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar y añadir..."
+            style={{width:"100%",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"10px 10px 10px 34px",fontSize:"14px",fontFamily:FONT}} />
+        </div>
         {search && (
-          <div style={{
-            background:"rgba(0,0,0,0.4)", border:"1px solid rgba(54,209,220,0.2)",
-            borderRadius:"0.5rem", marginTop:"0.4rem", maxHeight:"200px", overflowY:"auto"
-          }}>
-            {filtered.slice(0,12).map(p => (
-              <div key={p} onClick={()=>addItem(p)} style={{
-                padding:"0.6rem 0.9rem", cursor:"pointer", color:"rgba(255,255,255,0.85)",
-                fontSize:"0.875rem", borderBottom:"1px solid rgba(255,255,255,0.05)",
-                transition:"background 0.1s"
-              }}
-              onMouseEnter={e=>e.currentTarget.style.background="rgba(54,209,220,0.15)"}
-              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+          <div style={{border:"1px solid #e0e0e0",borderRadius:"8px",marginTop:"6px",maxHeight:"200px",overflowY:"auto",background:"white"}}>
+            {filtered.slice(0,10).map(p=>(
+              <div key={p} onClick={()=>add(p)}
+                style={{padding:"10px 14px",cursor:"pointer",fontSize:"14px",color:"#333",borderBottom:"1px solid #f5f5f5"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#f8fdfe"}
+                onMouseLeave={e=>e.currentTarget.style.background="white"}>
                 + {p}
               </div>
             ))}
-            {filtered.length===0 && <div style={{padding:"0.75rem",color:"rgba(255,255,255,0.3)",fontSize:"0.85rem"}}>Sin resultados</div>}
+            {filtered.length===0&&<div style={{padding:"10px 14px",color:"#aaa",fontSize:"13px"}}>Sin resultados</div>}
           </div>
         )}
       </div>
 
-      {items.length > 0 && (
-        <div style={S.card}>
-          <p style={{color:"#36D1DC", fontWeight:"700", marginBottom:"0.75rem", fontSize:"0.9rem"}}>
-            📦 Líneas del pedido ({items.length})
-          </p>
-          {items.map(item => (
-            <div key={item.producto} style={{
-              display:"flex", alignItems:"center", gap:"0.75rem",
-              padding:"0.5rem 0", borderBottom:"1px solid rgba(255,255,255,0.06)"
-            }}>
-              <span style={{flex:1, color:"rgba(255,255,255,0.85)", fontSize:"0.875rem"}}>{item.producto}</span>
-              <input type="number" min="1" value={item.cantidad}
-                onChange={e=>updateQty(item.producto, e.target.value)}
-                style={{...S.input, width:"70px", textAlign:"center", padding:"0.35rem"}}
-              />
-              <button onClick={()=>removeItem(item.producto)}
-                style={{...S.btnSm, color:"#f87171", borderColor:"#f87171", background:"rgba(248,113,113,0.1)"}}>
-                ✕
-              </button>
+      {items.length>0 && (
+        <div className="card" style={{padding:"16px"}}>
+          <div style={{fontSize:"12px",fontWeight:"700",color:"#888",marginBottom:"12px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Lineas del pedido ({items.length})</div>
+          {items.map(item=>(
+            <div key={item.producto} style={{display:"flex",alignItems:"center",gap:"10px",padding:"8px 0",borderBottom:"1px solid #f5f5f5"}}>
+              <span style={{flex:1,fontSize:"14px",color:"#333",fontWeight:"600"}}>{item.producto}</span>
+              <input type="number" min="1" value={item.cantidad} onChange={e=>setQty(item.producto,e.target.value)}
+                style={{width:"60px",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"5px",textAlign:"center",fontSize:"14px",fontFamily:FONT,fontWeight:"700"}} />
+              <button onClick={()=>remove(item.producto)}
+                style={{background:"#fff0f0",border:"none",borderRadius:"6px",padding:"5px 8px",color:"#ef4444",cursor:"pointer",fontSize:"14px",fontWeight:"700"}}>✕</button>
             </div>
           ))}
-          <button onClick={submit} disabled={!apt||saving} style={{
-            ...S.btn(), marginTop:"1rem", width:"100%", padding:"0.85rem",
-            opacity:(!apt||saving)?0.5:1
-          }}>
-            {saving ? "Enviando..." : "🚀 Crear Pedido"}
+          <button onClick={submit} disabled={!apt||saving} className="btn-primary"
+            style={{width:"100%",marginTop:"16px",padding:"13px",fontSize:"15px"}}>
+            {saving?"Enviando...":"Crear Pedido →"}
           </button>
         </div>
       )}
@@ -648,178 +493,127 @@ function CreateOrderTab({ supabase, profile }) {
 }
 
 // ─────────────────────────────────────────────
-// TAB 4: PEDIDOS PENDIENTES
+// TAB 3: PEDIDOS PENDIENTES
 // ─────────────────────────────────────────────
-function PedidosTab({ supabase, profile }) {
+function PendingTab({ supabase, profile }) {
   const [pedidos, setPedidos] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [photoPreview, setPhotoPreview] = useState({});
+  const [photos, setPhotos] = useState({});
   const [delivering, setDelivering] = useState(null);
   const [confirmQty, setConfirmQty] = useState({});
   const [assignedTo, setAssignedTo] = useState({});
 
-  useEffect(() => { fetchPedidos(); }, []);
+  useEffect(()=>{ fetch(); },[]);
 
-  async function fetchPedidos() {
+  async function fetch() {
     setLoading(true);
-    const { data } = await supabase.from("pedidos")
-      .select("*").eq("estado","pendiente").order("creado_at", { ascending:false });
+    const { data } = await supabase.from("pedidos").select("*").eq("estado","pendiente").order("creado_at",{ascending:false});
     if (data) setPedidos(data);
     setLoading(false);
   }
 
-  function handlePhoto(id, e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => setPhotoPreview(prev => ({...prev, [id]: ev.target.result}));
-    reader.readAsDataURL(file);
+  function handlePhoto(id,e) {
+    const file=e.target.files[0]; if(!file) return;
+    const r=new FileReader();
+    r.onload=ev=>setPhotos(p=>({...p,[id]:ev.target.result}));
+    r.readAsDataURL(file);
   }
 
   async function entregar(pedido) {
     setDelivering(pedido.id);
-    const items = JSON.parse(pedido.items || "[]");
-    const now = new Date().toISOString();
-    const quien = assignedTo[pedido.id] || profile;
-
-    // Restar del trastero y sumar al apartamento
+    const items=JSON.parse(pedido.items||"[]");
+    const quien=assignedTo[pedido.id]||profile;
+    const now=new Date().toISOString();
     for (const item of items) {
-      const qty = parseInt(confirmQty[`${pedido.id}_${item.producto}`] ?? item.cantidad);
-
-      // Trastero
-      const { data: tr } = await supabase.from("trastero").select("cantidad").eq("producto", item.producto).single();
-      const trQty = (tr?.cantidad ?? 0) - qty;
-      await supabase.from("trastero").upsert({ producto: item.producto, cantidad: Math.max(0, trQty) }, { onConflict:"producto" });
-
-      // Apartamento
-      const { data: ap } = await supabase.from("stock_apartamentos")
-        .select("cantidad").eq("apartamento", pedido.apartamento).eq("producto", item.producto).single();
-      const apQty = (ap?.cantidad ?? 0) + qty;
-      await supabase.from("stock_apartamentos").upsert(
-        { apartamento: pedido.apartamento, producto: item.producto, cantidad: apQty },
-        { onConflict:"apartamento,producto" }
-      );
+      const qty=parseInt(confirmQty[`${pedido.id}_${item.producto}`]??item.cantidad);
+      const {data:tr}=await supabase.from("trastero").select("cantidad").eq("producto",item.producto).single();
+      await supabase.from("trastero").upsert({producto:item.producto,cantidad:Math.max(0,(tr?.cantidad??0)-qty)},{onConflict:"producto"});
+      const {data:ap}=await supabase.from("stock_apartamentos").select("cantidad").eq("apartamento",pedido.apartamento).eq("producto",item.producto).single();
+      await supabase.from("stock_apartamentos").upsert({apartamento:pedido.apartamento,producto:item.producto,cantidad:(ap?.cantidad??0)+qty},{onConflict:"apartamento,producto"});
     }
-
-    await supabase.from("pedidos").update({
-      estado: "entregado",
-      entregado_por: quien,
-      entregado_at: now
-    }).eq("id", pedido.id);
-
+    await supabase.from("pedidos").update({estado:"entregado",entregado_por:quien,entregado_at:now}).eq("id",pedido.id);
     setDelivering(null);
-    setPedidos(prev => prev.filter(p=>p.id!==pedido.id));
+    setPedidos(p=>p.filter(x=>x.id!==pedido.id));
     setExpanded(null);
   }
 
-  if (loading) return <p style={{color:"rgba(255,255,255,0.5)"}}>Cargando pedidos...</p>;
+  if (loading) return <div style={{textAlign:"center",padding:"3rem",color:"#aaa"}}>Cargando...</div>;
   if (pedidos.length===0) return (
-    <div style={{textAlign:"center", padding:"3rem 1rem"}}>
-      <div style={{fontSize:"3rem", marginBottom:"0.75rem"}}>✅</div>
-      <p style={{color:"rgba(255,255,255,0.5)"}}>No hay pedidos pendientes</p>
-      <button onClick={fetchPedidos} style={S.btnSm}>↻ Actualizar</button>
+    <div style={{textAlign:"center",padding:"3rem"}}>
+      <div style={{fontSize:"3rem",marginBottom:"12px"}}>✅</div>
+      <p style={{color:"#888",fontWeight:"600",marginBottom:"12px"}}>No hay pedidos pendientes</p>
+      <button onClick={fetch} style={{background:"white",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"8px 16px",cursor:"pointer",fontFamily:FONT,fontWeight:"600",color:"#555"}}>↻ Actualizar</button>
     </div>
   );
 
   return (
-    <div>
-      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem"}}>
-        <span style={{color:"rgba(255,255,255,0.5)", fontSize:"0.85rem"}}>{pedidos.length} pendientes</span>
-        <button onClick={fetchPedidos} style={S.btnSm}>↻ Actualizar</button>
+    <div style={{paddingBottom:"80px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+        <span style={{color:"#888",fontSize:"13px",fontWeight:"600"}}>{pedidos.length} pedido{pedidos.length!==1?"s":""} pendiente{pedidos.length!==1?"s":""}</span>
+        <button onClick={fetch} style={{background:"white",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"6px 12px",cursor:"pointer",fontFamily:FONT,fontSize:"12px",fontWeight:"600",color:"#555"}}>↻ Actualizar</button>
       </div>
-
-      {pedidos.map(p => {
-        const items = JSON.parse(p.items || "[]");
-        const isOpen = expanded === p.id;
-        const fecha = new Date(p.creado_at).toLocaleDateString("es-ES", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
-
+      {pedidos.map(p=>{
+        const items=JSON.parse(p.items||"[]");
+        const isOpen=expanded===p.id;
+        const fecha=new Date(p.creado_at).toLocaleDateString("es-ES",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
         return (
-          <div key={p.id} style={{...S.card, cursor:"pointer"}} onClick={()=>setExpanded(isOpen?null:p.id)}>
-            <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+          <div key={p.id} className="card" style={{marginBottom:"10px",overflow:"hidden"}}>
+            <div onClick={()=>setExpanded(isOpen?null:p.id)} style={{padding:"14px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div>
-                <span style={{color:"#36D1DC", fontWeight:"800", fontSize:"0.95rem"}}>
-                  🏠 {p.apartamento}
-                </span>
-                <span style={{color:"rgba(255,255,255,0.4)", fontSize:"0.75rem", marginLeft:"0.75rem"}}>
-                  {fecha}
-                </span>
-                <div style={{color:"rgba(255,255,255,0.5)", fontSize:"0.78rem", marginTop:"0.2rem"}}>
-                  {items.length} producto{items.length!==1?"s":""} · por {p.creado_por}
+                <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+                  <span style={{fontWeight:"800",fontSize:"15px",color:"#222"}}>{p.apartamento}</span>
+                  <span style={{background:"#fff3cd",color:"#856404",fontSize:"11px",fontWeight:"700",padding:"2px 8px",borderRadius:"20px"}}>pendiente</span>
                 </div>
+                <div style={{fontSize:"12px",color:"#aaa",marginTop:"3px"}}>{fecha} · {items.length} producto{items.length!==1?"s":""} · por {p.creado_por}</div>
               </div>
-              <span style={{color:"rgba(255,255,255,0.4)", fontSize:"1.2rem"}}>{isOpen?"▲":"▼"}</span>
+              {isOpen?Icon.chevUp():Icon.chevDown()}
             </div>
-
             {isOpen && (
-              <div onClick={e=>e.stopPropagation()} style={{marginTop:"1rem", borderTop:"1px solid rgba(54,209,220,0.15)", paddingTop:"1rem"}}>
-                
+              <div onClick={e=>e.stopPropagation()} style={{borderTop:"1px solid #f0f0f0",padding:"14px 16px"}}>
                 {/* Asignar */}
-                <div style={{marginBottom:"1rem"}}>
-                  <label style={S.label}>👤 Asignar entrega a</label>
-                  <div style={{display:"flex", gap:"0.5rem", flexWrap:"wrap"}}>
-                    {PROFILES.map(pr => (
+                <div style={{marginBottom:"14px"}}>
+                  <div style={{fontSize:"11px",fontWeight:"700",color:"#888",marginBottom:"8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Asignar entrega a</div>
+                  <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+                    {PROFILES.map(pr=>(
                       <button key={pr} onClick={()=>setAssignedTo(prev=>({...prev,[p.id]:pr}))}
-                        style={{
-                          ...S.btnSm,
-                          background: (assignedTo[p.id]||profile)===pr ? `${PROFILE_COLORS[pr]}33` : "transparent",
-                          borderColor: (assignedTo[p.id]||profile)===pr ? PROFILE_COLORS[pr] : "rgba(255,255,255,0.2)",
-                          color: (assignedTo[p.id]||profile)===pr ? PROFILE_COLORS[pr] : "rgba(255,255,255,0.5)"
-                        }}>
+                        style={{padding:"6px 14px",borderRadius:"20px",border:`2px solid ${(assignedTo[p.id]||profile)===pr?PROFILE_COLORS[pr]:"#e0e0e0"}`,background:(assignedTo[p.id]||profile)===pr?`${PROFILE_COLORS[pr]}18`:"white",color:(assignedTo[p.id]||profile)===pr?PROFILE_COLORS[pr]:"#888",fontWeight:"700",cursor:"pointer",fontSize:"13px",fontFamily:FONT}}>
                         {pr}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {/* Items con cantidad confirmada */}
-                <table style={{width:"100%", borderCollapse:"collapse", marginBottom:"1rem"}}>
-                  <thead>
-                    <tr>
-                      <th style={S.th}>Producto</th>
-                      <th style={{...S.th, textAlign:"center"}}>Pedido</th>
-                      <th style={{...S.th, textAlign:"center"}}>Confirmar</th>
-                    </tr>
-                  </thead>
+                {/* Items */}
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"14px"}}>
+                  <thead><tr>
+                    <th style={{textAlign:"left",fontSize:"11px",color:"#888",padding:"6px 0",fontWeight:"700",textTransform:"uppercase"}}>Producto</th>
+                    <th style={{textAlign:"center",fontSize:"11px",color:"#888",padding:"6px 0",fontWeight:"700",textTransform:"uppercase"}}>Pedido</th>
+                    <th style={{textAlign:"center",fontSize:"11px",color:"#888",padding:"6px 0",fontWeight:"700",textTransform:"uppercase"}}>Confirmar</th>
+                  </tr></thead>
                   <tbody>
-                    {items.map(item => (
-                      <tr key={item.producto}>
-                        <td style={S.td}>{item.producto}</td>
-                        <td style={{...S.td, textAlign:"center", color:"rgba(255,255,255,0.5)"}}>{item.cantidad}</td>
-                        <td style={{...S.td, textAlign:"center"}}>
-                          <input type="number" min="0" max={item.cantidad}
-                            defaultValue={item.cantidad}
-                            onChange={e=>setConfirmQty(prev=>({...prev,[`${p.id}_${item.producto}`]:e.target.value}))}
-                            style={{...S.input, width:"65px", textAlign:"center", padding:"0.3rem"}}
-                          />
+                    {items.map(item=>(
+                      <tr key={item.producto} style={{borderBottom:"1px solid #f5f5f5"}}>
+                        <td style={{padding:"8px 0",fontSize:"13px",color:"#333"}}>{item.producto}</td>
+                        <td style={{textAlign:"center",color:"#aaa",fontSize:"13px"}}>{item.cantidad}</td>
+                        <td style={{textAlign:"center"}}>
+                          <input type="number" min="0" defaultValue={item.cantidad}
+                            onChange={e=>setConfirmQty(p=>({...p,[`${pedido.id}_${item.producto}`]:e.target.value}))}
+                            style={{width:"60px",border:"1px solid #e0e0e0",borderRadius:"6px",padding:"4px",textAlign:"center",fontSize:"13px",fontFamily:FONT,fontWeight:"700"}} />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-
-                {/* Foto evidencia */}
-                <div style={{marginBottom:"1rem"}}>
-                  <label style={S.label}>📸 Foto de evidencia (opcional)</label>
-                  <input type="file" accept="image/*" capture="environment"
-                    onChange={e=>handlePhoto(p.id, e)}
-                    style={{color:"rgba(255,255,255,0.7)", fontSize:"0.82rem"}}
-                  />
-                  {photoPreview[p.id] && (
-                    <img src={photoPreview[p.id]} alt="preview"
-                      style={{marginTop:"0.75rem", borderRadius:"0.5rem", maxHeight:"150px", maxWidth:"100%", display:"block"}}
-                    />
-                  )}
+                {/* Foto */}
+                <div style={{marginBottom:"14px"}}>
+                  <div style={{fontSize:"11px",fontWeight:"700",color:"#888",marginBottom:"8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Foto de evidencia (opcional)</div>
+                  <input type="file" accept="image/*" capture="environment" onChange={e=>handlePhoto(p.id,e)}
+                    style={{fontSize:"13px",color:"#555"}} />
+                  {photos[p.id]&&<img src={photos[p.id]} alt="preview" style={{marginTop:"10px",borderRadius:"8px",maxHeight:"140px",display:"block"}} />}
                 </div>
-
-                <button
-                  onClick={()=>entregar(p)}
-                  disabled={delivering===p.id}
-                  style={{
-                    ...S.btn("#22c55e"), width:"100%", padding:"0.85rem",
-                    opacity:delivering===p.id?0.6:1
-                  }}>
-                  {delivering===p.id ? "Procesando..." : "✅ Marcar como Entregado"}
+                <button onClick={()=>entregar(p)} disabled={delivering===p.id}
+                  style={{width:"100%",background:"#22c55e",border:"none",borderRadius:"10px",padding:"13px",color:"white",fontWeight:"700",fontSize:"15px",cursor:"pointer",fontFamily:FONT,opacity:delivering===p.id?0.6:1}}>
+                  {delivering===p.id?"Procesando...":"✅ Marcar como Entregado"}
                 </button>
               </div>
             )}
@@ -831,112 +625,317 @@ function PedidosTab({ supabase, profile }) {
 }
 
 // ─────────────────────────────────────────────
-// APP PRINCIPAL
+// TAB 4: HISTORIAL
 // ─────────────────────────────────────────────
-export default function App() {
-  const [sbCreds, setSbCreds] = useState(() => {
-    const env_url = process.env.REACT_APP_SUPABASE_URL;
-    const env_key = process.env.REACT_APP_SUPABASE_ANON_KEY;
-    if (env_url && env_key) return { url: env_url, key: env_key };
-    return loadFromLocalStorage();
-  });
+function HistorialTab({ supabase }) {
+  const [pedidos, setPedidos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
 
-  const supabase = sbCreds.url && sbCreds.key ? getSupabaseClient(sbCreds.url, sbCreds.key) : null;
+  useEffect(()=>{ fetchHistorial(); },[]);
 
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const [tab, setTab] = useState(0);
-
-  const tabs = [
-    { label:"Trastero Base", icon:"📦" },
-    { label:"Stock Apts", icon:"🏠" },
-    { label:"Crear Pedido", icon:"➕" },
-    { label:"Pendientes", icon:"🚚" }
-  ];
-
-  // SALVAVIDAS: sin credenciales → pantalla de configuración
-  if (!supabase) {
-    return <ConfigScreen onConnect={(url, key)=>setSbCreds({ url, key })} />;
+  async function fetchHistorial() {
+    setLoading(true);
+    const { data } = await supabase.from("pedidos").select("*").eq("estado","entregado").order("entregado_at",{ascending:false});
+    if (data) setPedidos(data);
+    setLoading(false);
   }
 
-  if (!loggedIn) return <LoginScreen onLogin={()=>setLoggedIn(true)} />;
-  if (!profile) return <ProfileSelector onSelect={p=>setProfile(p)} />;
-
-  const profileColor = PROFILE_COLORS[profile] || "#36D1DC";
+  if (loading) return <div style={{textAlign:"center",padding:"3rem",color:"#aaa"}}>Cargando historial...</div>;
+  if (pedidos.length===0) return (
+    <div style={{textAlign:"center",padding:"3rem"}}>
+      <div style={{fontSize:"3rem",marginBottom:"12px"}}>📋</div>
+      <p style={{color:"#888",fontWeight:"600"}}>No hay entregas completadas aun</p>
+    </div>
+  );
 
   return (
-    <div style={{
-      minHeight:"100vh",
-      background:"linear-gradient(160deg,#0d1b2a 0%,#1a2f42 50%,#0d1b2a 100%)",
-      fontFamily:"'Nunito',sans-serif",
-      color:"white"
-    }}>
-      {/* Google Font */}
-      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-
-      {/* TOP BAR */}
-      <div style={{
-        background:"rgba(13,27,42,0.9)", backdropFilter:"blur(12px)",
-        borderBottom:"1px solid rgba(54,209,220,0.15)",
-        padding:"0.75rem 1rem",
-        display:"flex", justifyContent:"space-between", alignItems:"center",
-        position:"sticky", top:0, zIndex:100
-      }}>
-        <div style={{display:"flex", alignItems:"center", gap:"0.6rem"}}>
-          <div style={{
-            width:"32px", height:"32px", borderRadius:"0.5rem",
-            background:"linear-gradient(135deg,#36D1DC,#5B86E5)",
-            display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1rem"
-          }}>🏠</div>
-          <span style={{fontWeight:"900", fontSize:"1rem", color:"white"}}>NUBA</span>
-        </div>
-
-        <div style={{display:"flex", alignItems:"center", gap:"0.5rem"}}>
-          <div style={{
-            background:`${profileColor}22`, border:`1px solid ${profileColor}55`,
-            borderRadius:"2rem", padding:"0.3rem 0.85rem",
-            color:profileColor, fontWeight:"700", fontSize:"0.82rem"
-          }}>
-            {profile==="Joaquín"?"👨‍💼":profile==="Nanda"?"👩‍💼":profile==="Cari"?"👩‍🔧":"👩‍💻"} {profile}
+    <div style={{paddingBottom:"80px"}}>
+      <div style={{color:"#888",fontSize:"13px",fontWeight:"600",marginBottom:"12px"}}>{pedidos.length} entrega{pedidos.length!==1?"s":""} completada{pedidos.length!==1?"s":""}</div>
+      {pedidos.map(p=>{
+        const items=JSON.parse(p.items||"[]");
+        const isOpen=expanded===p.id;
+        const fechaEntrega=p.entregado_at?new Date(p.entregado_at).toLocaleDateString("es-ES",{weekday:"short",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
+        const prColor=PROFILE_COLORS[p.entregado_por]||C;
+        return (
+          <div key={p.id} className="card" style={{marginBottom:"10px",overflow:"hidden"}}>
+            <div onClick={()=>setExpanded(isOpen?null:p.id)} style={{padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:"12px"}}>
+              <div style={{width:"36px",height:"36px",borderRadius:"50%",background:"#f0fdf4",border:"2px solid #86efac",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {Icon.check()}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+                  <span style={{fontWeight:"800",fontSize:"15px",color:"#222"}}>{p.apartamento}</span>
+                  <span style={{background:"#f0fdf4",color:"#166534",fontSize:"11px",fontWeight:"700",padding:"2px 8px",borderRadius:"20px"}}>entregado</span>
+                </div>
+                <div style={{fontSize:"12px",color:"#aaa",marginTop:"3px"}}>{fechaEntrega}</div>
+              </div>
+              {isOpen?Icon.chevUp():Icon.chevDown()}
+            </div>
+            {isOpen && (
+              <div style={{borderTop:"1px solid #f0f0f0",padding:"14px 16px"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"14px"}}>
+                  <div style={{background:"#f9f9f9",borderRadius:"8px",padding:"10px"}}>
+                    <div style={{fontSize:"11px",color:"#aaa",fontWeight:"600",marginBottom:"3px"}}>Solicitado por</div>
+                    <div style={{fontSize:"14px",fontWeight:"700",color:"#333"}}>{p.creado_por||"—"}</div>
+                  </div>
+                  <div style={{background:"#f9f9f9",borderRadius:"8px",padding:"10px"}}>
+                    <div style={{fontSize:"11px",color:"#aaa",fontWeight:"600",marginBottom:"3px"}}>Entregado por</div>
+                    <div style={{fontSize:"14px",fontWeight:"700",color:prColor}}>{p.entregado_por||"—"}</div>
+                  </div>
+                </div>
+                {p.creado_at && (
+                  <div style={{fontSize:"12px",color:"#aaa",marginBottom:"10px"}}>
+                    Creado: {new Date(p.creado_at).toLocaleDateString("es-ES",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}
+                    {p.entregado_at && ` · Entregado: ${new Date(p.entregado_at).toLocaleDateString("es-ES",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}`}
+                  </div>
+                )}
+                <div style={{fontSize:"11px",fontWeight:"700",color:"#888",marginBottom:"8px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Productos entregados</div>
+                {items.map(item=>(
+                  <div key={item.producto} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f5f5f5",fontSize:"13px"}}>
+                    <span style={{color:"#333",fontWeight:"600"}}>{item.producto}</span>
+                    <span style={{color:"#888",fontWeight:"700"}}>x{item.cantidad}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <button onClick={()=>{setProfile(null);}} style={{
-            background:"transparent", border:"1px solid rgba(255,255,255,0.15)",
-            borderRadius:"0.4rem", padding:"0.3rem 0.6rem", color:"rgba(255,255,255,0.5)",
-            cursor:"pointer", fontSize:"0.75rem", fontFamily:"'Nunito',sans-serif"
-          }}>⇄</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// TAB 5: KPIs
+// ─────────────────────────────────────────────
+function KPITab({ supabase }) {
+  const [pedidos, setPedidos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState("semana"); // hoy | semana | mes | todo
+
+  useEffect(()=>{ fetchAll(); },[]);
+
+  async function fetchAll() {
+    setLoading(true);
+    const { data } = await supabase.from("pedidos").select("*").eq("estado","entregado");
+    if (data) setPedidos(data);
+    setLoading(false);
+  }
+
+  function filterByPeriod(list) {
+    const now=new Date();
+    return list.filter(p=>{
+      if (!p.entregado_at) return false;
+      const d=new Date(p.entregado_at);
+      if (period==="hoy") return d.toDateString()===now.toDateString();
+      if (period==="semana") { const s=new Date(now); s.setDate(now.getDate()-7); return d>=s; }
+      if (period==="mes") { const s=new Date(now); s.setDate(now.getDate()-30); return d>=s; }
+      return true;
+    });
+  }
+
+  function avgTime(list) {
+    const valid=list.filter(p=>p.creado_at&&p.entregado_at);
+    if (!valid.length) return null;
+    const avg=valid.reduce((a,p)=>a+(new Date(p.entregado_at)-new Date(p.creado_at)),0)/valid.length;
+    const h=Math.floor(avg/3600000);
+    const m=Math.floor((avg%3600000)/60000);
+    return `${h}h ${m}m`;
+  }
+
+  function exportCSV() {
+    const rows=[["Apartamento","Creado por","Entregado por","Fecha creacion","Fecha entrega","Productos"]];
+    filtered.forEach(p=>{
+      const items=JSON.parse(p.items||"[]").map(i=>`${i.producto}(${i.cantidad})`).join("; ");
+      rows.push([p.apartamento,p.creado_por||"",p.entregado_por||"",p.creado_at||"",p.entregado_at||"",items]);
+    });
+    const csv=rows.map(r=>r.join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download="nuba_kpis.csv"; a.click();
+  }
+
+  const filtered=filterByPeriod(pedidos);
+  const pending=pedidos.length; // we only have delivered here; we'd need to fetch pending too
+  const avg=avgTime(filtered);
+
+  // Stats por perfil
+  const byProfile=PROFILES.map(pr=>{
+    const mine=filtered.filter(p=>p.entregado_por===pr);
+    const hoy=filterByPeriod(pedidos.filter(p=>p.entregado_por===pr));
+    const avgT=avgTime(mine);
+    return { name:pr, total:mine.length, hoy:hoy.length, avg:avgT };
+  });
+  const topPerformer=byProfile.reduce((a,b)=>b.total>a.total?b:a,byProfile[0]);
+
+  if (loading) return <div style={{textAlign:"center",padding:"3rem",color:"#aaa"}}>Cargando KPIs...</div>;
+
+  return (
+    <div style={{paddingBottom:"80px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
+        <h2 style={{fontSize:"18px",fontWeight:"800",color:"#222"}}>Panel de KPIs</h2>
+        <button onClick={exportCSV} className="btn-primary" style={{display:"flex",alignItems:"center",gap:"6px",padding:"8px 14px",fontSize:"12px"}}>
+          {Icon.export()} Exportar CSV
+        </button>
+      </div>
+
+      {/* Stats principales */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"12px"}}>
+        <div className="card" style={{padding:"16px"}}>
+          <div style={{fontSize:"12px",color:"#888",fontWeight:"600",marginBottom:"4px"}}>Total Entregas</div>
+          <div style={{fontSize:"28px",fontWeight:"900",color:"#222"}}>{filtered.length}</div>
+        </div>
+        <div className="card" style={{padding:"16px"}}>
+          <div style={{fontSize:"12px",color:"#f59e0b",fontWeight:"600",marginBottom:"4px"}}>Pendientes</div>
+          <div style={{fontSize:"28px",fontWeight:"900",color:"#f59e0b"}}>—</div>
         </div>
       </div>
 
-      {/* TABS NAV */}
-      <div style={{
-        display:"flex", borderBottom:"1px solid rgba(54,209,220,0.15)",
-        background:"rgba(0,0,0,0.2)", overflowX:"auto"
-      }}>
-        {tabs.map((t,i) => (
-          <button key={i} onClick={()=>setTab(i)} style={{
-            flex:"1 0 auto", padding:"0.9rem 0.75rem",
-            background:"transparent",
-            borderBottom: tab===i ? "2px solid #36D1DC" : "2px solid transparent",
-            color: tab===i ? "#36D1DC" : "rgba(255,255,255,0.45)",
-            fontWeight: tab===i ? "800" : "600",
-            cursor:"pointer", fontSize:"0.78rem", whiteSpace:"nowrap",
-            fontFamily:"'Nunito',sans-serif", border:"none",
-            borderBottomWidth:"2px", borderBottomStyle:"solid",
-            borderBottomColor: tab===i ? "#36D1DC" : "transparent",
-            transition:"all 0.2s"
-          }}>
-            <span style={{display:"block", fontSize:"1.1rem", marginBottom:"0.15rem"}}>{t.icon}</span>
-            {t.label}
+      {avg && (
+        <div className="card" style={{padding:"16px",marginBottom:"12px"}}>
+          <div style={{fontSize:"12px",color:"#888",fontWeight:"600",marginBottom:"4px"}}>Tiempo Medio de Cumplimiento</div>
+          <div style={{fontSize:"24px",fontWeight:"900",color:C}}>{avg}</div>
+        </div>
+      )}
+
+      {topPerformer && topPerformer.total>0 && (
+        <div className="card" style={{padding:"16px",marginBottom:"12px",background:`linear-gradient(135deg,${C}11,${C}22)`,border:`1px solid ${C}33`}}>
+          <div style={{fontSize:"11px",color:"#888",fontWeight:"700",marginBottom:"6px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Top Performer</div>
+          <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+            <div style={{width:"40px",height:"40px",borderRadius:"50%",background:C,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:"800",fontSize:"16px"}}>
+              {PROFILE_INITIALS[topPerformer.name]}
+            </div>
+            <div>
+              <div style={{fontWeight:"800",fontSize:"16px",color:"#222"}}>{topPerformer.name}</div>
+              <div style={{fontSize:"12px",color:C,fontWeight:"600"}}>{topPerformer.total} entregas totales</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filtros periodo */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:"6px",marginBottom:"16px"}}>
+        {["hoy","semana","mes","todo"].map(per=>(
+          <button key={per} onClick={()=>setPeriod(per)}
+            style={{padding:"9px",border:"none",borderRadius:"8px",background:period===per?C:"white",color:period===per?"white":"#555",fontWeight:"700",cursor:"pointer",fontSize:"12px",fontFamily:FONT,boxShadow:period===per?"none":"0 1px 3px rgba(0,0,0,0.08)",textTransform:"capitalize"}}>
+            {per.charAt(0).toUpperCase()+per.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* CONTENT */}
-      <div style={{padding:"1.25rem 1rem", maxWidth:"800px", margin:"0 auto"}}>
-        {tab===0 && <TrasteroTab supabase={supabase} />}
-        {tab===1 && <StockAptTab supabase={supabase} />}
-        {tab===2 && <CreateOrderTab supabase={supabase} profile={profile} />}
-        {tab===3 && <PedidosTab supabase={supabase} profile={profile} />}
+      {/* Stats por empleado */}
+      <div style={{fontSize:"12px",fontWeight:"700",color:"#888",marginBottom:"10px",textTransform:"uppercase",letterSpacing:"0.5px"}}>Estadisticas por Empleado</div>
+      {byProfile.map(pr=>(
+        <div key={pr.name} className="card" style={{padding:"16px",marginBottom:"10px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+              <div style={{width:"36px",height:"36px",borderRadius:"50%",background:PROFILE_COLORS[pr.name],display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:"800",fontSize:"15px"}}>
+                {PROFILE_INITIALS[pr.name]}
+              </div>
+              <div>
+                <div style={{fontWeight:"700",fontSize:"15px",color:"#222"}}>{pr.name}</div>
+                <div style={{fontSize:"12px",color:"#aaa"}}>{pr.total} pedidos entregados</div>
+              </div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px"}}>
+            <div style={{background:"#f9f9f9",borderRadius:"8px",padding:"10px",textAlign:"center"}}>
+              <div style={{fontSize:"20px",fontWeight:"900",color:"#222"}}>{pr.hoy}</div>
+              <div style={{fontSize:"11px",color:"#aaa",marginTop:"2px"}}>Hoy</div>
+            </div>
+            <div style={{background:"#f9f9f9",borderRadius:"8px",padding:"10px",textAlign:"center"}}>
+              <div style={{fontSize:"20px",fontWeight:"900",color:"#222"}}>{pr.total}</div>
+              <div style={{fontSize:"11px",color:"#aaa",marginTop:"2px"}}>Periodo</div>
+            </div>
+            <div style={{background:"#f9f9f9",borderRadius:"8px",padding:"10px",textAlign:"center"}}>
+              <div style={{fontSize:"20px",fontWeight:"900",color:"#222"}}>{filtered.filter(p=>p.entregado_por===pr.name).length}</div>
+              <div style={{fontSize:"11px",color:"#aaa",marginTop:"2px"}}>Total</div>
+            </div>
+          </div>
+          {pr.avg&&<div style={{fontSize:"12px",color:"#888",marginTop:"10px",display:"flex",alignItems:"center",gap:"4px"}}>⏱ Tiempo medio: <strong style={{color:"#333"}}>{pr.avg}</strong></div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// APP PRINCIPAL
+// ─────────────────────────────────────────────
+export default function App() {
+  const [sbCreds, setSbCreds] = useState(() => loadCreds());
+  const supabase = sbCreds.url && sbCreds.key ? getSupabaseClient(sbCreds.url, sbCreds.key) : null;
+
+  const [loggedIn, setLoggedIn] = useState(() => {
+    try { return localStorage.getItem("nuba_logged")==="1"; } catch { return false; }
+  });
+  const [profile, setProfile] = useState(() => {
+    try { return localStorage.getItem("nuba_profile")||null; } catch { return null; }
+  });
+  const [tab, setTab] = useState(0);
+
+  if (!supabase) return <ConfigScreen onConnect={(u,k)=>setSbCreds({url:u,key:k})} />;
+  if (!loggedIn) return <LoginScreen onLogin={()=>setLoggedIn(true)} />;
+  if (!profile) return <ProfileSelector onSelect={p=>setProfile(p)} />;
+
+  const pc = PROFILE_COLORS[profile]||C;
+
+  const tabs = [
+    { label:"Stock",      icon:(c)=>Icon.stock(c) },
+    { label:"Crear",      icon:(c)=>Icon.create(c) },
+    { label:"Pendientes", icon:(c)=>Icon.pending(c) },
+    { label:"Historial",  icon:(c)=>Icon.history(c) },
+    { label:"KPIs",       icon:(c)=>Icon.kpi(c) },
+  ];
+
+  return (
+    <div style={{minHeight:"100vh",background:"#f4f6f9",fontFamily:FONT,maxWidth:"600px",margin:"0 auto",position:"relative"}}>
+      <style>{css}</style>
+      <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+
+      {/* TOP BAR */}
+      <div style={{background:"white",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          <div style={{width:"32px",height:"32px",borderRadius:"50%",background:`linear-gradient(135deg,${C},#5B86E5)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{fontSize:"16px"}}>🏠</span>
+          </div>
+          <div>
+            <div style={{fontWeight:"900",fontSize:"15px",color:"#222",lineHeight:1}}>NUBA</div>
+            <div style={{fontSize:"10px",color:"#aaa",fontWeight:"600"}}>Apartamentos</div>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+            <div style={{width:"28px",height:"28px",borderRadius:"50%",background:pc,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:"800",fontSize:"12px"}}>
+              {PROFILE_INITIALS[profile]}
+            </div>
+            <span style={{fontWeight:"700",fontSize:"14px",color:"#333"}}>{profile}</span>
+          </div>
+          <button onClick={()=>{try{localStorage.removeItem("nuba_profile");}catch{}setProfile(null);}}
+            style={{background:"none",border:"1px solid #e0e0e0",borderRadius:"8px",padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}>
+            {Icon.logout("#aaa")}
+          </button>
+        </div>
+      </div>
+
+      {/* CONTENIDO */}
+      <div style={{padding:"16px"}}>
+        {tab===0 && <StockTab supabase={supabase} />}
+        {tab===1 && <CreateTab supabase={supabase} profile={profile} />}
+        {tab===2 && <PendingTab supabase={supabase} profile={profile} />}
+        {tab===3 && <HistorialTab supabase={supabase} />}
+        {tab===4 && <KPITab supabase={supabase} />}
+      </div>
+
+      {/* BOTTOM NAV */}
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"600px",background:"white",borderTop:"1px solid #f0f0f0",display:"flex",zIndex:100,boxShadow:"0 -2px 10px rgba(0,0,0,0.06)"}}>
+        {tabs.map((t,i)=>(
+          <button key={i} onClick={()=>setTab(i)} className={`nav-tab${tab===i?" active":""}`}>
+            {t.icon(tab===i?C:"#aaa")}
+            {t.label}
+          </button>
+        ))}
       </div>
     </div>
   );
